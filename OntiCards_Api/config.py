@@ -2,6 +2,7 @@
 import os
 
 import dotenv
+from urllib.parse import quote_plus
 
 dotenv.load_dotenv()
 
@@ -170,9 +171,18 @@ class Config:
             key: get_env(key) for key in
             ['DB_USERNAME', 'DB_PASSWORD', 'DB_HOST', 'DB_PORT', 'DB_DATABASE', 'DB_CHARSET']
         }
-        db_extras = f"?client_encoding={db_credentials['DB_CHARSET']}" if db_credentials['DB_CHARSET'] else ""
+        db_extras = f"?client_encoding={quote_plus(db_credentials['DB_CHARSET'])}" if db_credentials['DB_CHARSET'] else ""
 
-        self.SQLALCHEMY_DATABASE_URI = f"postgresql://{db_credentials['DB_USERNAME']}:{db_credentials['DB_PASSWORD']}@{db_credentials['DB_HOST']}:{db_credentials['DB_PORT']}/{db_credentials['DB_DATABASE']}{db_extras}"
+        # URL-encode username / password because they may legally contain
+        # ':' , '@' , '/' etc. — leaving them raw breaks the DSN parser and
+        # can silently fall back to a malformed connection string.
+        _u = quote_plus(db_credentials['DB_USERNAME'] or '')
+        _p = quote_plus(db_credentials['DB_PASSWORD'] or '')
+        _h = quote_plus(db_credentials['DB_HOST'] or '')
+        _n = quote_plus(db_credentials['DB_DATABASE'] or '')
+        self.SQLALCHEMY_DATABASE_URI = (
+            f"postgresql://{_u}:{_p}@{_h}:{db_credentials['DB_PORT']}/{_n}{db_extras}"
+        )
         self.SQLALCHEMY_ENGINE_OPTIONS = {
             'pool_size': int(get_env('SQLALCHEMY_POOL_SIZE')),
             'pool_recycle': int(get_env('SQLALCHEMY_POOL_RECYCLE')),
