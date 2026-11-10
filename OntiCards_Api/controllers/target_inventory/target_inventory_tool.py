@@ -689,8 +689,16 @@ class HistoryJobListAPI(Resource):
         """
         datasource_id = request.args.get("datasource_id")
         status = request.args.get("status")
-        page = int(request.args.get("page", 1))
-        page_size = int(request.args.get("page_size", 20))
+        try:
+            page = int(request.args.get("page", 1))
+        except (TypeError, ValueError):
+            page = 1
+        try:
+            page_size = int(request.args.get("page_size", 20))
+        except (TypeError, ValueError):
+            page_size = 20
+        page = max(1, page)
+        page_size = max(1, min(page_size, 200))
 
         # 构建查询 - 只查询当前用户的任务
         query = db.session.query(TargetInventoryJob).filter(
